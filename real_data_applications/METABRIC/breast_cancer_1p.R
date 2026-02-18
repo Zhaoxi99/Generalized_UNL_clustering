@@ -6,12 +6,11 @@ library(UNL.est)
 library(corrplot)
 library(WASABI)
 
-source("D:/PhD_study2_desktop/lddp_functions.R")
-#source("D:/PhD_study2_desktop/multi_dpm.R")
-clinical_raw=readr::read_tsv("D:/PhD_study2_desktop/new_app/metabric/brca_metabric_clinical_data.tsv", 
+source("functions/lddp_functions.R")
+clinical_raw=readr::read_tsv("brca_metabric_clinical_data.tsv", 
                              na = c("", "NA"))  
-gene_raw=readr::read_table("D:/PhD_study2_desktop/new_app/metabric/mRNA expression_with_BECN1_BRCA1.txt")
-CNA_raw=readr::read_table("D:/PhD_study2_desktop/new_app/metabric/cna.txt") 
+gene_raw=readr::read_table("mRNA expression_with_BECN1_BRCA1.txt")
+CNA_raw=readr::read_table("cna.txt") 
 data_clinical_raw=clinical_raw%>%
   dplyr::select(`Sample ID`,`Lymph nodes examined positive`,
                 `Neoplasm Histologic Grade`,`Tumor Size`,
@@ -39,23 +38,7 @@ proc.time()-ptm
 psm_dpm <- comp.psm(res_dpm$z)
 output_vi_dpm <- minVI(psm_dpm, res_dpm$z)
 
-ptm=proc.time()
-set.seed(129)
-out_WASABI_2p <- WASABI(res_dpm$z, psm = psm_dpm, L = 2,
-                        method.init = "++", method = "salso")
-proc.time()-ptm
 
-ptm=proc.time()
-set.seed(1519)
-out_WASABI_3p <- WASABI(res_dpm$z, psm = psm_dpm, L = 3,
-                        method.init = "++", method = "salso")
-proc.time()-ptm
-
-ggsummary(out_WASABI_2p)
-ggsummary(out_WASABI_3p)
-
-table(out_WASABI_2p$particles[1,])
-table(out_WASABI_2p$particles[2,])
 table(output_vi_dpm$cl)
 
 # summarize each group
@@ -85,29 +68,26 @@ summary(data_clinical$`Nottingham prognostic index`[output_vi_dpm$cl==3])
 
 data_plot=data_clinical%>%mutate(group=output_vi_dpm$cl)
 
-png("D:/PhD_study2_desktop/plots/application_plots/metabric_plots/1p/nodestage_hist.png",
-    width = 500*5, height = 334*5,res = 72*5)
+
 df_prop <- data.frame(
   grade = as.character(data_clinical$node_stage),
   cluster = as.character(output_vi_dpm$cl)
 ) %>%
-  filter(!is.na(grade) & grade != "") %>%       # 根据需要去掉缺失/空值
+  filter(!is.na(grade) & grade != "") %>%       
   group_by(cluster, grade) %>%
   summarise(n = n(), .groups = "drop") %>%
   group_by(cluster) %>%
   mutate(prop = n / sum(n)) %>%
   ungroup()
 
-# 2. 保证等级顺序和 cluster 顺序（可按需调整）
-df_prop$grade <- factor(df_prop$grade, levels = c("1","2","3"))
-df_prop$cluster <- factor(df_prop$cluster, levels = c("1","2","3"))  # 如果你有不同顺序，改这里
 
-# 3. 颜色向量（如果你已有 cols，使用它；否则用示例）
+df_prop$grade <- factor(df_prop$grade, levels = c("1","2","3"))
+df_prop$cluster <- factor(df_prop$cluster, levels = c("1","2","3"))  
+
 cols <- c("#377EB8","#4DAF4A","#E41A1C")
 
 mycols <- setNames(cols[1:3], levels(df_prop$cluster))
 
-# 4. 绘图：以 grade 为 x，cluster 用颜色区分（每个 grade 里并列比较不同 cluster）
 ggplot(df_prop, aes(x = grade, y = prop, fill = cluster)) +
   geom_col(position = position_dodge(width = 0.9), width = 0.8, color = "black") +
   scale_fill_manual(values = mycols, name = "Cluster") +
@@ -120,31 +100,26 @@ ggplot(df_prop, aes(x = grade, y = prop, fill = cluster)) +
   theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
         axis.title = element_text(size = 20),
         axis.text = element_text(size = 15))
-dev.off()
 
-png("D:/PhD_study2_desktop/plots/application_plots/metabric_plots/1p/tumorgrade_hist.png",
-    width = 500*5, height = 334*5,res = 72*5)
+
 df_prop <- data.frame(
   grade = as.character(data_clinical$`Neoplasm Histologic Grade`),
   cluster = as.character(output_vi_dpm$cl)
 ) %>%
-  filter(!is.na(grade) & grade != "") %>%       # 根据需要去掉缺失/空值
+  filter(!is.na(grade) & grade != "") %>%       
   group_by(cluster, grade) %>%
   summarise(n = n(), .groups = "drop") %>%
   group_by(cluster) %>%
   mutate(prop = n / sum(n)) %>%
   ungroup()
 
-# 2. 保证等级顺序和 cluster 顺序（可按需调整）
 df_prop$grade <- factor(df_prop$grade, levels = c("1","2","3"))
-df_prop$cluster <- factor(df_prop$cluster, levels = c("1","2","3"))  # 如果你有不同顺序，改这里
+df_prop$cluster <- factor(df_prop$cluster, levels = c("1","2","3"))  
 
-# 3. 颜色向量（如果你已有 cols，使用它；否则用示例）
 cols <- c("#377EB8","#4DAF4A","#E41A1C")
 
 mycols <- setNames(cols[1:3], levels(df_prop$cluster))
 
-# 4. 绘图：以 grade 为 x，cluster 用颜色区分（每个 grade 里并列比较不同 cluster）
 ggplot(df_prop, aes(x = grade, y = prop, fill = cluster)) +
   geom_col(position = position_dodge(width = 0.9), width = 0.8, color = "black") +
   scale_fill_manual(values = mycols, name = "Cluster") +
@@ -155,18 +130,16 @@ ggplot(df_prop, aes(x = grade, y = prop, fill = cluster)) +
             position = position_dodge(width = 0.9), vjust = -0.25, size = 3) +
   theme_minimal() +
   theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),     axis.title = element_text(size = 20),     axis.text = element_text(size = 15))
-dev.off()
 
-png("D:/PhD_study2_desktop/plots/application_plots/metabric_plots/1p/tumorsize_hist.png",
-    width = 500*5, height = 334*5,res = 72*5)
+
 
 cols <- c("#377EB8","#4DAF4A","#E41A1C")
 ggplot(data_plot, aes(x = `Tumor Size`, fill = as.factor(group))) +
-  geom_histogram(aes(y = ..density..),        # freq = FALSE -> density
-                 position = "identity",       # 叠加而非堆叠
-                 alpha = 0.45,                # 透明度，便于比较
-                 bins = 30,                   # 可调整或改为 binwidth = ...
-                 color = "black") +          # 柱子边框
+  geom_histogram(aes(y = ..density..),        
+                 position = "identity",       
+                 alpha = 0.45,               
+                 bins = 30,                
+                 color = "black") +         
   scale_fill_manual(values = cols) +labs(fill="cluster")+
   #scale_x_continuous(breaks = 1:7) +
   labs(x = "Tumor Size(mm)", y = "Density",title = "Histogram of tumor size by cluster") +
@@ -174,24 +147,24 @@ ggplot(data_plot, aes(x = `Tumor Size`, fill = as.factor(group))) +
   theme(
     plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
     axis.title = element_text(size = 20),
-    axis.text = element_text(size = 15),           # 标题居中
-    #legend.position = c(0.02, 0.98),                  # 图内右上角（模拟 base::legend("topright")）
+    axis.text = element_text(size = 15),        
+    #legend.position = c(0.02, 0.98),                 
     legend.justification = c(1, 1),
     legend.background = element_blank(),
     legend.key = element_blank()
   )
 dev.off()
 
-png("D:/PhD_study2_desktop/plots/application_plots/metabric_plots/1p/npi_hist.png",
-    width = 500*5, height = 334*5,res = 72*5)
+
+
 cols <- c("#377EB8","#4DAF4A","#E41A1C")
 
 ggplot(data_plot, aes(x = `Nottingham prognostic index`, fill = as.factor(group))) +
-  geom_histogram(aes(y = ..density..),        # freq = FALSE -> density
-                 position = "identity",       # 叠加而非堆叠
-                 alpha = 0.45,                # 透明度，便于比较
-                 bins = 30,                   # 可调整或改为 binwidth = ...
-                 color = "black") +          # 柱子边框
+  geom_histogram(aes(y = ..density..),        
+                 position = "identity",      
+                 alpha = 0.45,               
+                 bins = 30,           
+                 color = "black") +       
   scale_fill_manual(values = cols) +labs(fill="cluster")+
   scale_x_continuous(breaks = 1:7) +
   labs(x = "NPI", y = "Density",title = "Histogram of NPI score by cluster") +
@@ -200,12 +173,11 @@ ggplot(data_plot, aes(x = `Nottingham prognostic index`, fill = as.factor(group)
     plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
     axis.title = element_text(size = 20),
     axis.text = element_text(size = 15),
-    #legend.position = c(0.02, 0.98),                  # 图内右上角（模拟 base::legend("topright")）
+    #legend.position = c(0.02, 0.98),                
     legend.justification = c(1, 1),
     legend.background = element_blank(),
     legend.key = element_blank()
   )
-dev.off()
 
 
 ##est unl
@@ -283,8 +255,8 @@ cols <- c(
   rgb(1, 0, 0, 0.2)
 )
 
-png("D:/PhD_study2_desktop/plots/application_plots/metabric_plots/1p/met_esr_UNL.png",
-    width = 500*5, height = 334*5,res = 72*5)
+
+
 full  <- tranform_list(UNL_imp_full)$unl
 m1    <- tranform_list(UNL_imp_metsr1)$unl
 m2    <- tranform_list(UNL_imp_metsr2)$unl
@@ -305,14 +277,13 @@ mycols <- setNames(cols[1:3], c("MET, ESR1 & ESR2",
                                 "MET & ESR1",
                                 "MET & ESR2"))
 
-# 绘图（density：y = ..density..）
 ggplot(df, aes(x = unl, fill = group)) +
   geom_histogram(aes(y = after_stat(density)),
-                 position = "identity",    # 叠加显示
-                 alpha = 0.45,             # 透明度，便于比较
-                 bins = 30,          # 可根据需要调整 binwidth 或用 bins = 30
-                 color = "black") +        # 柱子边框
-  coord_cartesian(xlim = c(1, 3), ylim = c(0, 8)) +   # 保留原来你给的 xlim/ylim
+                 position = "identity",   
+                 alpha = 0.45,             
+                 bins = 30,          
+                 color = "black") +      
+  coord_cartesian(xlim = c(1, 3), ylim = c(0, 8)) +   
   scale_fill_manual(values = mycols,
                     name = NULL) +
   labs(x = "UNL", y = "Density") +
@@ -322,12 +293,11 @@ ggplot(df, aes(x = unl, fill = group)) +
     plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
     axis.title = element_text(size = 20),
     axis.text = element_text(size = 15),
-    legend.position = c(0.98, 0.98),                  # 图内右上角（模拟 base::legend("topright")）
+    legend.position = c(0.98, 0.98),                
     legend.justification = c(1, 1),
     legend.background = element_blank(),
     legend.key = element_blank()
   )
-dev.off()
 
 
 
@@ -391,13 +361,11 @@ cols <- c(
   rgb(1, 0, 0, 0.2)
 )
 
-png("D:/PhD_study2_desktop/plots/application_plots/metabric_plots/1p/BECN_BRCA_UNL.png",
-    width = 500*5, height = 334*5,res = 72*5)
+
 full  <- tranform_list(UNL_imp_b_all)$unl
 becn1 <- tranform_list(UNL_imp_becn1)$unl
 brca1 <- tranform_list(UNL_imp_brca1)$unl
 
-# 合并为 tidy 格式
 df <- data.frame(
   unl = c(full, becn1, brca1),
   group = factor(rep(
@@ -412,28 +380,25 @@ df <- data.frame(
 mycols <- setNames(cols[1:3], c("BECN1 & BRCA1",
                                 "BECN1",
                                 "BRCA1"))
-# 绘图
 ggplot(df, aes(x = unl, fill = group)) +
-  geom_histogram(aes(y = ..density..),        # freq = FALSE -> density
-                 position = "identity",       # 叠加而非堆叠
-                 alpha = 0.45,                # 透明度，便于比较
-                 bins = 30,                   # 可调整或改为 binwidth = ...
-                 color = "black") +          # 柱子边框
+  geom_histogram(aes(y = ..density..),       
+                 position = "identity",       
+                 alpha = 0.45,              
+                 bins = 30,                 
+                 color = "black") +      
   scale_fill_manual(values = mycols,
                     name = NULL) +
-  coord_cartesian(xlim = c(1, 3), ylim = c(0, 8)) +   # 保留你原来的 x/y 范围
+  coord_cartesian(xlim = c(1, 3), ylim = c(0, 8)) +  
   labs(x = "UNL", y = "Density") +
   theme_minimal() +
   theme(
     plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
     axis.title = element_text(size = 20),
     axis.text = element_text(size = 15),
-    legend.position = c(0.98, 0.98),                  # 图内右上角（模拟 base::legend("topright")）
+    legend.position = c(0.98, 0.98),                 
     legend.justification = c(1, 1),
     legend.background = element_blank(),
     legend.key = element_blank()
   )
-dev.off()
 
-save.image("D:/PhD_study2_desktop/new_app/metabric/data/breastcancer_1p.RData")
 
