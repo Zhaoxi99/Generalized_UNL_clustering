@@ -6,9 +6,9 @@ library(UNL.est)
 library(corrplot)
 library(LSBP)
 
-source("D:/PhD_study2_desktop/lddp_functions.R")
+source("functions/lddp_functions.R")
 
-load("D:/PhD_study2_desktop/new_app/dde_app/dde.RData")
+load("dde.RData")
 
 dde$GAD=dde$GAD/7
 ggplot(data=dde, aes(x=DDE,y=GAD)) + geom_point(alpha=.5, cex=.5) + geom_smooth( method="loess", span = 1, col=1) + xlab("DDE (mg/L)") + ylab("Gestational age at delivery (in weeks)") + theme_bw() 
@@ -32,14 +32,6 @@ prior <- list(m0 = fit_lm$coefficients,
               aalpha = 2, balpha=2,
               L = 20)
 
-# prior <- list(m0 = c(0,0),
-#               S0 = solve(t(X)%*%X)*(sigma(fit_lm)^2),
-#               nu = k + 2,
-#               Psi = diag(2),
-#               a = 1,
-#               b = 1,
-#               aalpha = 2, balpha=2,
-#               L = 20)
 
 set.seed(176)
 fit_lddp <- lddp_moves(y = data$GAD,
@@ -51,47 +43,8 @@ fit_lddp <- lddp_moves(y = data$GAD,
 
 psm_lddp <- comp.psm(fit_lddp$z)
 output_vi_lddp <- minVI(psm_lddp, fit_lddp$z)
-save.image("//csce.datastore.ed.ac.uk/csce/maths/groups/mdt/clustering_paper/application_data/dde/dde_fit_partitions.RData")
 
 plotpsm(psm_lddp)
-
-##is wasabi worthwhile?
-library(WASABI)
-
-ptm=proc.time()
-set.seed(16789)
-out_WASABI_2p <- WASABI(fit_lddp$z, psm = psm_lddp, L = 2,
-                        method.init = "++", method = "salso")
-proc.time()-ptm
-
-ptm=proc.time()
-set.seed(15359)
-out_WASABI_3p <- WASABI(fit_lddp$z, psm = psm_lddp, L = 3,
-                        method.init = "++", method = "salso")
-proc.time()-ptm
-
-ggsummary(out_WASABI_2p)
-ggsummary(out_WASABI_3p)
-
-table(out_WASABI_2p$particles[1,])
-table(out_WASABI_3p$particles[1,])
-plotpsm(psm_lddp)
-
-table(out_WASABI_3p$particles[1,])
-table(out_WASABI_3p$particles[2,])
-table(output_vi_lddp$cl)
-
-ggplot(dde)+geom_point(aes(x=DDE,y=GAD,col=as.factor(out_WASABI_2p$particles[1,])),alpha=.5, cex=.5)+
-  xlab("DDE (mg/L)") + ylab("Gestational age at delivery (in weeks)") +labs(col="cluster")+
-  geom_hline(yintercept = 37, color = "red", linewidth = 0.45)+
-  geom_hline(yintercept = 42, color = "blue", linewidth = 0.45)+
-  theme_bw()
-
-ggplot(dde)+geom_point(aes(x=DDE,y=GAD,col=as.factor(out_WASABI_3p$particles[1,])),alpha=.5, cex=.5)+
-  xlab("DDE (mg/L)") + ylab("Gestational age at delivery (in weeks)") +labs(col="cluster")+
-  geom_hline(yintercept = 37, color = "red", linewidth = 0.45)+
-  geom_hline(yintercept = 42, color = "blue", linewidth = 0.45)+
-  theme_bw()
 
 
 ###
@@ -114,8 +67,7 @@ summary(fit_lm2)
 fit_lm3 <- lm(GAD ~DDE,data = dde[ind3,])
 summary(fit_lm3)
 
-png(filename = "D:/PhD_study2_desktop/plots/application_plots/dde_plots/dde_cluster_partition.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 theme_set(theme_bw())
 ggplot(dde)+geom_point(aes(x=DDE,y=GAD,col=as.factor(output_vi_lddp$cl)),alpha=.5, cex=.5)+
   xlab("DDE (mg/L)") + ylab("Gestational age at delivery (in weeks)") +labs(col="cluster")+
@@ -135,18 +87,11 @@ ggplot(dde)+geom_point(aes(x=DDE,y=GAD,col=as.factor(output_vi_lddp$cl)),alpha=.
         text =  element_text(size = 15),
         legend.text = element_text(size = 15)
   )
-dev.off()
 
 
-# ggplot(dde)+geom_point(aes(x=DDE,y=GAD,col=as.factor(out_WASABI$particles[1,])))+theme_bw()
-# ggplot(dde)+geom_point(aes(x=DDE,y=GAD,col=as.factor(out_WASABI2$particles[3,])))+theme_bw()
-# ggplot(dde)+geom_point(aes(x=DDE,y=GAD,col=as.factor(out_WASABI2$particles[2,])))+theme_bw()
-# 
-# plotpsm(psm_lddp)
 
 
 ##
-
 x_c1 <- as.matrix(X[ind1,c(2)]);samples1=list(y=x_c1,y_cate=NULL)
 x_c2 <- as.matrix(X[ind2,c(2)]);samples2=list(y=x_c2,y_cate=NULL)
 x_c3 <- as.matrix(X[ind3,c(2)]);samples3=list(y=x_c3,y_cate=NULL)
@@ -183,6 +128,7 @@ plan(multisession, workers = detectCores()-2)
 res_list=list(res_1,res_2,res_3)
 #UNL for joint density
 ptm=proc.time()
+set.seed(124)
 UNL_imp_lddp=future_lapply(X=nsave_list,FUN = imp_unl3,res_list=res_list,
                            n_imp=5000,continuous_slct_index=c(1),
                            cate_slct_index=NULL,future.seed = TRUE)
@@ -200,11 +146,6 @@ tranform_list<-function(simulation_object){
   return(list(unl=unl,eff_size=eff_size))
 }
 
-# png(filename = "D:/PhD_study2_desktop/plots/application_plots/dde_plots/dde_UNL_hist.png",
-#     width = 609*5, height = 469*5,res = 72*5)
-# hist(tranform_list(UNL_imp_lddp)$unl,xlim=c(1,3),col = rgb(0, 0, 1, 0.2),
-#      freq = FALSE,xlab = "UNL",main = "3 clusters (conditional)")
-# dev.off()
 
 cols <- c(
   rgb(0, 0, 1, 0.2),
@@ -212,8 +153,6 @@ cols <- c(
   rgb(1, 0, 0, 0.2)
 )
 
-png(filename = "D:/PhD_study2_desktop/plots/application_plots/dde_plots/dde_UNL_hist.png",
-    width = 609*5, height = 469*5,res = 72*5)
 
 # 合并为 tidy 格式
 df <- data.frame(
@@ -222,26 +161,27 @@ df <- data.frame(
 
 # 绘图
 ggplot(df, aes(x = unl)) +
-  geom_histogram(aes(y = ..density..),        # freq = FALSE -> density
-                 position = "identity",       # 叠加而非堆叠
-                 alpha = 0.45,                # 透明度，便于比较
-                 bins = 30,                   # 可调整或改为 binwidth = ...
-                 color = "black",fill=rgb(0, 0, 1, 0.2)) +          # 柱子边框 +
-  coord_cartesian(xlim = c(1, 3), ylim = c(0, 12)) +   # 保留你原来的 x/y 范围
+  geom_histogram(aes(y = ..density..),        
+                 position = "identity",       
+                 alpha = 0.45,                
+                 bins = 30,                   
+                 color = "black",fill=rgb(0, 0, 1, 0.2)) +          
+  coord_cartesian(xlim = c(1, 3), ylim = c(0, 12)) +   
   labs(x = "UNL", y = "Density") +
   theme_minimal() +
   theme(
     plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
     axis.title = element_text(size = 20),
     axis.text = element_text(size = 15),
-    legend.position = c(0.98, 0.98),                  # 图内右上角（模拟 base::legend("topright")）
+    legend.position = c(0.98, 0.98),                  
     legend.justification = c(1, 1),
     legend.background = element_blank(),
     legend.key = element_blank()
   )
-dev.off()
 
 summary(tranform_list(UNL_imp_lddp)$unl)
+
+
 
 ##conditional densities
 DDE.points  <- round(quantile(data$DDE,c(0.1,0.6,0.9,0.99)),2)
@@ -334,8 +274,7 @@ data_hist_plot3 <- data.frame(
 data_hist_plot4 <- data.frame(
   GAD = dde$GAD[which(dde$DDE > 79.6)])
 
-png(filename = "D:/PhD_study2_desktop/plots/application_plots/dde_plots/dde_LSBP_lddp_conditional1.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 binwidth=2*(quantile(data_hist_plot1$GAD,0.75)-quantile(data_hist_plot1$GAD,0.25))/(length(data_hist_plot1$GAD)^(1/3))
 ggplot(data=data_density_plot1) + 
   geom_line(aes(x=sequenceGAD,y=estimate_lddp),col='red')+ 
@@ -354,10 +293,8 @@ ggplot(data=data_density_plot1) +
     plot.title.position = "plot",            # 可选：使标题相对于整个绘图区域定位
     plot.subtitle = element_text(hjust = 0.5)
   )
-dev.off()
 
-png(filename = "D:/PhD_study2_desktop/plots/application_plots/dde_plots/dde_LSBP_lddp_conditional2.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 binwidth=2*(quantile(data_hist_plot2$GAD,0.75)-quantile(data_hist_plot2$GAD,0.25))/(length(data_hist_plot2$GAD)^(1/3))
 ggplot(data=data_density_plot2) + 
   geom_line(aes(x=sequenceGAD,y=estimate_lddp),col='red')+ 
@@ -376,10 +313,9 @@ ggplot(data=data_density_plot2) +
         plot.title.position = "plot",            # 可选：使标题相对于整个绘图区域定位
         plot.subtitle = element_text(hjust = 0.5)
   )
-dev.off()
 
-png(filename = "D:/PhD_study2_desktop/plots/application_plots/dde_plots/dde_LSBP_lddp_conditional3.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
+
 binwidth=2*(quantile(data_hist_plot3$GAD,0.75)-quantile(data_hist_plot3$GAD,0.25))/(length(data_hist_plot3$GAD)^(1/3))
 ggplot(data=data_density_plot3) + 
   geom_line(aes(x=sequenceGAD,y=estimate_lddp),col='red')+ 
@@ -398,10 +334,9 @@ ggplot(data=data_density_plot3) +
         plot.title.position = "plot",            # 可选：使标题相对于整个绘图区域定位
         plot.subtitle = element_text(hjust = 0.5)
   )
-dev.off()
 
-png(filename = "D:/PhD_study2_desktop/plots/application_plots/dde_plots/dde_LSBP_lddp_conditional4.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
+
 binwidth=2*(quantile(data_hist_plot4$GAD,0.75)-quantile(data_hist_plot4$GAD,0.25))/(length(data_hist_plot4$GAD)^(1/3))
 ggplot(data=data_density_plot4) + 
   geom_line(aes(x=sequenceGAD,y=estimate_lddp),col='red')+ 
@@ -420,10 +355,9 @@ ggplot(data=data_density_plot4) +
         plot.title.position = "plot",            # 可选：使标题相对于整个绘图区域定位
         plot.subtitle = element_text(hjust = 0.5)
   )
-dev.off()
 
 
-##posterior predictive
+##posterior predictive checks
 ptm=proc.time()
 set.seed(167)
 y_post_lddp=predic_lddp(fit_lddp =fit_lddp,X=X)*sd(dde$GAD) + mean(dde$GAD)
@@ -443,8 +377,7 @@ ggplot(df, aes(x = x_value, y = value)) +
   xlab("DDE (mg/L)") + ylab("Gestational age at delivery (in weeks)")+
   theme_bw()
 
-png(filename = "D:/PhD_study2_desktop/plots/application_plots/dde_plots/post_check_dde_kurtosis.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 data_kurtosis=data.frame(kurtosis=apply(y_post_lddp,FUN = moments::kurtosis,MARGIN = 1))
 original_kurtosis=moments::kurtosis(dde$GAD)
 theme_set(theme_bw())
@@ -452,10 +385,8 @@ ggplot(data_kurtosis, aes(x=kurtosis)) +
   geom_histogram( fill="slategray4", color="slategray4")+
   geom_vline(xintercept = original_kurtosis, color="lightblue", linewidth=1)+
   xlab("Kurtosis of GAD")+ylab("Counts")+  theme(     plot.title = element_text(size = 20, face = "bold", hjust = 0.5),     axis.title = element_text(size = 20),     axis.text = element_text(size = 15)   )
-dev.off()
 
-png(filename = "D:/PhD_study2_desktop/plots/application_plots/dde_plots/post_check_dde_skewness.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 data_skewness=data.frame(skewness=apply(y_post_lddp,FUN = moments::skewness,MARGIN = 1))
 original_skewness=moments::skewness(dde$GAD)
 theme_set(theme_bw())
@@ -463,10 +394,8 @@ ggplot(data_skewness, aes(x=skewness)) +
   geom_histogram(fill="slategray4", color="slategray4")+
   geom_vline(xintercept = original_skewness, color="lightblue", linewidth=1)+
   xlab("Skewness of GAD")+ylab("Counts")+  theme(     plot.title = element_text(size = 20, face = "bold", hjust = 0.5),     axis.title = element_text(size = 20),     axis.text = element_text(size = 15)   )
-dev.off()
 
-png(filename = "D:/PhD_study2_desktop/plots/application_plots/dde_plots/post_check_dde_min.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 data_min=data.frame(min=apply(y_post_lddp,FUN = min,MARGIN = 1))
 original_min=min(dde$GAD)
 theme_set(theme_bw())
@@ -474,10 +403,8 @@ ggplot(data_min, aes(x=min)) +
   geom_histogram( fill="slategray4", color="slategray4")+
   geom_vline(xintercept = original_min, color="lightblue", linewidth=1)+
   xlab("Minmum value of GAD")+ylab("Counts")+  theme(     plot.title = element_text(size = 20, face = "bold", hjust = 0.5),     axis.title = element_text(size = 20),     axis.text = element_text(size = 15)   )
-dev.off()
 
-png(filename = "D:/PhD_study2_desktop/plots/application_plots/dde_plots/post_check_dde_max.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 data_max=data.frame(max=apply(y_post_lddp,FUN = max,MARGIN = 1))
 original_max=max(dde$GAD)
 theme_set(theme_bw())
@@ -486,7 +413,6 @@ ggplot(data_max, aes(x=max)) +
   geom_vline(xintercept = original_max, color="lightblue", linewidth=1)+
   xlim(45,50)+
   xlab("Maximum value of GAD")+ylab("Counts")+  theme(     plot.title = element_text(size = 20, face = "bold", hjust = 0.5),     axis.title = element_text(size = 20),     axis.text = element_text(size = 15)   )
-dev.off()
 
 ##
 
@@ -505,8 +431,7 @@ y_post_lddp_bin3=predic_lddp(fit_lddp =fit_lddp,X=X3)*sd(dde$GAD) + mean(dde$GAD
 y_post_lddp_bin4=predic_lddp(fit_lddp =fit_lddp,X=X4)*sd(dde$GAD) + mean(dde$GAD)
 proc.time()-ptm
 
-png(filename = "D:/PhD_study2_desktop/plots/application_plots/dde_plots/post_check_dde_dense1.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 plot(density(y_post_lddp_bin1[,1],n=2048),xlim=c(25,50),ylim=c(0,0.3),xlab = "Gestational age at delivery (in weeks)",
      main = "DDE level < 12.57 (10th percentile)",col="slategray4",cex.main=1.7,cex.lab=1.5)
 for(r in 2:mcmc$nsave){
@@ -514,11 +439,9 @@ for(r in 2:mcmc$nsave){
 }
 lines(density(dde$GAD[data$DDE<thresholds[1]],n=2048)$x,
       density(dde$GAD[data$DDE<thresholds[1]],n=2048)$y,col="lightblue",lwd=4)
-dev.off()
 
 
-png(filename = "D:/PhD_study2_desktop/plots/application_plots/dde_plots/post_check_dde_dense2.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 plot(density(y_post_lddp_bin2[,1],n=2048),xlim=c(25,50),ylim=c(0,0.3),xlab = "Gestational age at delivery (in weeks)",
      main = "12.57< DDE level < 28.44 (between the 10th and 60th percentiles)",col="slategray4",cex.main=1.7,cex.lab=1.5)
 for(r in 2:mcmc$nsave){
@@ -526,11 +449,9 @@ for(r in 2:mcmc$nsave){
 }
 lines(density(dde$GAD[data$DDE>thresholds[1]&data$DDE<thresholds[2]],n=2048)$x,
       density(dde$GAD[data$DDE>thresholds[1]&data$DDE<thresholds[2]],n=2048)$y,col="lightblue",lwd=4)
-dev.off()
 
 
-png(filename = "D:/PhD_study2_desktop/plots/application_plots/dde_plots/post_check_dde_dense3.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 plot(density(y_post_lddp_bin3[,1],n=2048),xlim=c(25,50),ylim=c(0,0.3),xlab = "Gestational age at delivery (in weeks)",
      main = "28.44< DDE level < 53.72 (between the 60th and 90th percentiles)",col="slategray4",cex.main=1.7,cex.lab=1.5)
 for(r in 2:mcmc$nsave){
@@ -538,11 +459,9 @@ for(r in 2:mcmc$nsave){
 }
 lines(density(dde$GAD[data$DDE>thresholds[2]&data$DDE<thresholds[3]],n=2048)$x,
       density(dde$GAD[data$DDE>thresholds[2]&data$DDE<thresholds[3]],n=2048)$y,col="lightblue",lwd=4)
-dev.off()
 
 
-png(filename = "D:/PhD_study2_desktop/plots/application_plots/dde_plots/post_check_dde_dense4.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 plot(density(y_post_lddp_bin4[,1],n=2048),xlim=c(25,50),ylim=c(0,0.3),xlab = "Gestational age at delivery (in weeks)",
      main = "DDE level >53.72 (90th percentile)",col="slategray4",cex.main=1.7,cex.lab=1.5)
 for(r in 2:mcmc$nsave){
@@ -550,6 +469,4 @@ for(r in 2:mcmc$nsave){
 }
 lines(density(dde$GAD[data$DDE>thresholds[3]],n=2048)$x,
       density(dde$GAD[data$DDE>thresholds[3]],n=2048)$y,col="lightblue",lwd=4)
-dev.off()
 
-save.image("D:/PhD_study2_desktop/new_app/dde_app/dde_test5.RData")
