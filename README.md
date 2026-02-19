@@ -2,4 +2,4 @@ Code for the illustration examples and the real data illustraions in the paper ‚
 ================
 Zhaoxi Zhang, Vanda In√°cio, and Sara Wade
 
-The code obtaining the results of the illustration examples in Section 3 is in the illustration_examples folder and the code obtaining the results of the real world applications in Section 4 is in the real_data_applications folder. The functions needed  are in the functions folder. The package UNL.est is available at: https://github.com/Zhaoxi99/UNL.est.
+The code obtaining the results of the illustration examples in Section 3 is in the illustration_examples folder and the code obtaining the results of the real world applications in Section 4 is in the real_data_applications folder. The functions needed  are in the functions folder. The package UNL.est is available at https://github.com/Zhaoxi99/UNL.est. The data needed for the breast cancer genomic analysis is also available at https://www.cbioportal.org/.
