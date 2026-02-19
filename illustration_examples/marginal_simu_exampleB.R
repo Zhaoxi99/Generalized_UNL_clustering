@@ -2,7 +2,7 @@ library(ggplot2)
 require(mcclust.ext)
 library(UNL.est)
 
-source("D:/PhD_study2_desktop/lddp_functions.R")
+source("functions/lddp_functions.R")
 #example b
 set.seed(111)
 
@@ -34,19 +34,17 @@ ggplot() +
   theme_bw() +
   labs( x = "x1", y = "x2", color = "Cluster") 
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_B_fit.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 theme_set(theme_bw())
 ggplot(data)+geom_point(aes(x=x1,y=x2,col=as.character(output_vi_dpm$cl)))+labs(col="cluster")+
   theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
         axis.title = element_text(size = 20),
         axis.text = element_text(size = 18),
-        plot.title.position = "plot",            # 可选：使标题相对于整个绘图区域定位
+        plot.title.position = "plot",           
         plot.subtitle = element_text(hjust = 0.5),
         text =  element_text(size = 20),
         legend.text = element_text(size = 20)
   )
-dev.off()
 
 
 ind1 <- which(output_vi_dpm$cl == 1)
@@ -58,7 +56,7 @@ x_c2 <- as.matrix(data[ind2,c(1,2)]);samples2=list(y=x_c2,y_cate=NULL)
 
 
 
-##prior for group 1,2,3
+##prior for group 1,2
 set.seed(123)
 prior1=prior_dpm(samples1, L=L, K=L%/%2, nstart = 5)
 set.seed(123)
@@ -115,8 +113,7 @@ tranform_list<-function(simulation_object){
 
 
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_B_UNLhist.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 cols <- c(
   rgb(0, 0, 1, 0.2),
   rgb(0, 1, 0, 0.2),
@@ -126,7 +123,6 @@ full  <- tranform_list(UNL_imp_full)$unl
 m1 <- tranform_list(UNL_imp_m1)$unl
 m2 <- tranform_list(UNL_imp_m2)$unl
 
-# 合并为 tidy 格式
 df <- data.frame(
   unl = c(full, m1, m2),
   group = factor(rep(
@@ -141,16 +137,15 @@ df <- data.frame(
 mycols <- setNames(cols[1:3], c("x1 and x2",
                                 "x1",
                                 "x2"))
-# 绘图
 ggplot(df, aes(x = unl, fill = group)) +
-  geom_histogram(aes(y = ..density..),        # freq = FALSE -> density
-                 position = "identity",       # 叠加而非堆叠
-                 alpha = 0.45,                # 透明度，便于比较
-                 bins = 90,                   # 可调整或改为 binwidth = ...
-                 color = "black") +          # 柱子边框
+  geom_histogram(aes(y = ..density..),        
+                 position = "identity",      
+                 alpha = 0.45,                
+                 bins = 90,                 
+                 color = "black") +     
   scale_fill_manual(values = mycols,
                     name = NULL) +
-  coord_cartesian(xlim = c(1, 2), ylim = c(0, 18)) +   # 保留你原来的 x/y 范围
+  coord_cartesian(xlim = c(1, 2), ylim = c(0, 18)) +   
   labs(x = "UNL", y = "Density") +
   theme_minimal() +
   theme(
@@ -158,9 +153,8 @@ ggplot(df, aes(x = unl, fill = group)) +
     axis.title = element_text(size = 20),
     axis.text = element_text(size = 18),
     legend.text = element_text(size = 20),
-    legend.position = c(0.98, 0.98),                  # 图内右上角（模拟 base::legend("topright")）
+    legend.position = c(0.98, 0.98),                
     legend.justification = c(1, 1),
     legend.background = element_blank(),
     legend.key = element_blank()
   )
-dev.off()

@@ -2,7 +2,7 @@ library(ggplot2)
 require(mcclust.ext)
 library(UNL.est)
 
-source("D:/PhD_study2_desktop/lddp_functions.R")
+source("functions/lddp_functions.R")
 #example a
 set.seed(111)
 n=600
@@ -15,18 +15,9 @@ sign=ifelse(x<=-1,1,ifelse(x>=1,3,2))
 data=data.frame(cbind(x,eps,means,y,sign))
 
 data=data.frame(cbind(x,eps,means,y))
-png("D:/PhD_study2_desktop/plots/example_plots/example_A1.png",
-    width = 500*5, height = 334*5,res = 72*5)
-ggplot(data)+geom_point(aes(x=x,y=y,col=as.factor(sign)))+labs(col="")+theme_bw()
-dev.off()
 
-# L=20
-# prior <- list(m0 = 0, S0 = 10, a = 2, b = 0.5, aalpha = 2,  balpha = 2, L = 20)
-# # prior <- list(m0 = apply(y,FUN = mean,MARGIN = 2,na.rm=TRUE), L0 = var(y),
-# #               a = 2, b = 0.5, alpha = 1, L = 10)
-# mcmc <- list(nsave = 10000, nburn = 2000, nskip = 1)
-# 
-# res <- dpm(y = y, prior = prior, mcmc = mcmc, standardise = TRUE)
+ggplot(data)+geom_point(aes(x=x,y=y,col=as.factor(sign)))+labs(col="")+theme_bw()
+
 
 
 L=10
@@ -41,19 +32,17 @@ proc.time()-ptm
 psm_dpm <- comp.psm(res$z)
 output_vi_dpm <- minVI(psm_dpm, res$z)
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_A_fit.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 theme_set(theme_bw())
 ggplot(data)+geom_point(aes(x=x,y=y,col=as.character(output_vi_dpm$cl)))+labs(col="cluster")+
   theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
         axis.title = element_text(size = 20),
         axis.text = element_text(size = 18),
-        plot.title.position = "plot",            # 可选：使标题相对于整个绘图区域定位
+        plot.title.position = "plot",            
         plot.subtitle = element_text(hjust = 0.5),
         text =  element_text(size = 20),
         legend.text = element_text(size = 20)
   )
-dev.off()
 
 ind1 <- which(output_vi_dpm$cl == 1)
 ind2 <- which(output_vi_dpm$cl == 2)
@@ -110,14 +99,9 @@ tranform_list<-function(simulation_object){
   return(list(unl=unl,eff_size=eff_size))
 }
 
-# png("D:/PhD_study2_desktop/plots/example_plots/example_A1_UNLhist.png",
-#     width = 500*5, height = 334*5,res = 72*5)
-# hist(tranform_list(UNL_imp_full)$unl,xlim=c(1,3),col = rgb(1, 0, 0, 0.2),freq = FALSE,xlab = "UNL",main = "3 clusters (marginal); 3 clusters (conditional)")
-# hist(tranform_list(UNL_imp_full)$unl,xlim=c(1,2),col = rgb(0, 0, 1, 0.2), add = TRUE,freq = FALSE)
-# dev.off()
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_A_UNLhist.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
+
 cols <- c(
   rgb(0, 0, 1, 0.2),
   rgb(0, 1, 0, 0.2),
@@ -129,14 +113,13 @@ df <- data.frame(
 )
 
 
-# 绘图（density：y = ..density..）
 ggplot(df, aes(x = unl, )) +
   geom_histogram(aes(y = after_stat(density)),
-                 position = "identity",    # 叠加显示
-                 alpha = 0.45,             # 透明度，便于比较
-                 bins = 15,          # 可根据需要调整 binwidth 或用 bins = 30
-                 color = "black",fill = cols[1]) +        # 柱子边框
-  coord_cartesian(xlim = c(1, 3)) +   # 保留原来你给的 xlim/ylim
+                 position = "identity",   
+                 alpha = 0.45,            
+                 bins = 15,          
+                 color = "black",fill = cols[1]) +        
+  coord_cartesian(xlim = c(1, 3)) +  
   labs(x = "UNL", y = "Density") +
   theme_minimal() +
   theme(
@@ -145,10 +128,9 @@ ggplot(df, aes(x = unl, )) +
     axis.title = element_text(size = 20),
     axis.text = element_text(size = 18),
     legend.text = element_text(size = 20),
-    legend.position = c(0.17, 0.98),                  # 图内右上角（模拟 base::legend("topright")）
+    legend.position = c(0.17, 0.98),                  
     legend.justification = c(1, 1),
     legend.background = element_blank(),
     legend.key = element_blank()
   )
-dev.off()
 

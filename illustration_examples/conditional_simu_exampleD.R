@@ -2,7 +2,7 @@ library(ggplot2)
 require(mcclust.ext)
 library(UNL.est)
 
-source("D:/PhD_study2_desktop/lddp_functions.R")
+source("functions/lddp_functions.R")
 set.seed(27149)
 n=1000;p=20
 sigma2_x=diag(4,p)
@@ -47,7 +47,7 @@ ggplot(data)+geom_point(aes(x=X1,y=y,col=as.factor(u_y<p_weight)))+
   theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
         axis.title = element_text(size = 20),
         axis.text = element_text(size = 15),
-        plot.title.position = "plot",            # 可选：使标题相对于整个绘图区域定位
+        plot.title.position = "plot",           
         plot.subtitle = element_text(hjust = 0.5),
         text =  element_text(size = 15),
         legend.text = element_text(size = 15)
@@ -83,20 +83,18 @@ psm_lddp <- comp.psm(fit_lddp$z)
 output_vi_lddp <- minVI(psm_lddp, fit_lddp$z)
 
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_D_lddp_fit.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 theme_set(theme_bw())
 ggplot(data)+geom_point(aes(x=X1,y=y,col=as.factor(output_vi_lddp$cl)))+
   labs(x="x1",y="y",col="cluster")+
   theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
         axis.title = element_text(size = 20),
         axis.text = element_text(size = 15),
-        plot.title.position = "plot",            # 可选：使标题相对于整个绘图区域定位
+        plot.title.position = "plot",            
         plot.subtitle = element_text(hjust = 0.5),
         text =  element_text(size = 15),
         legend.text = element_text(size = 15)
   )
-dev.off()
 
 ind1 <- which(output_vi_lddp$cl == 1)
 ind2 <- which(output_vi_lddp$cl == 2)
@@ -104,7 +102,7 @@ ind2 <- which(output_vi_lddp$cl == 2)
 x_c1 <- x[ind1,];samples1=list(y=x_c1,y_cate=NULL)
 x_c2 <- x[ind2,];samples2=list(y=x_c2,y_cate=NULL)
 
-##prior for group 1,2,3
+##prior for group 1,2
 L=10
 set.seed(123)
 prior1=prior_dpm(samples1, L=L, K=50, nstart = 5)
@@ -113,10 +111,6 @@ prior2=prior_dpm(samples2, L=L, K=50, nstart = 5)
 #det(prior2$prior_full$L0)
 
 ptm=proc.time()
-set.seed(159)
-res_1_shrink <- dpm_MN_Mcate_shrink(y_all = samples1, prior = prior1$prior_shrink, mcmc = mcmc, standardise = FALSE) 
-set.seed(159)
-res_2_shrink <- dpm_MN_Mcate_shrink(y_all = samples2, prior = prior2$prior_shrink, mcmc = mcmc, standardise = FALSE) 
 set.seed(159)
 res_1 <- dpm_MN_Mcate(y_all = samples1, prior = prior1$prior_full, mcmc = mcmc, standardise = FALSE) 
 set.seed(159)
@@ -132,25 +126,8 @@ for (i in 1:mcmc$nsave) {
 }
 
 plan(multisession, workers = detectCores()-2)
-res_list=list(res_1,res_2);res_list_shrink=list(res_1_shrink,res_2_shrink)
+res_list=list(res_1,res_2)
 #UNL for joint density
-ptm=proc.time()
-set.seed(125)
-UNL_imp_full_shrink=future_lapply(X=nsave_list,FUN = imp_unl3,res_list=res_list_shrink,
-                                  n_imp=5000,continuous_slct_index=1:20,
-                                  cate_slct_index=NULL,future.seed = TRUE)
-set.seed(125)
-UNL_imp_pindex1_shrink=future_lapply(X=nsave_list,FUN = imp_unl3,res_list=res_list_shrink,
-                                     n_imp=5000,continuous_slct_index=sigma2_x_non0_index1_raw,
-                                     cate_slct_index=NULL,future.seed = TRUE)
-set.seed(125)
-UNL_imp_pindex2_shrink=future_lapply(X=nsave_list,FUN = imp_unl3,res_list=res_list_shrink,
-                                     n_imp=5000,continuous_slct_index=sigma2_x_non0_index2_raw,
-                                     cate_slct_index=NULL,future.seed = TRUE)
-set.seed(125)
-UNL_imp_p1_shrink=future_lapply(X=nsave_list,FUN = imp_unl3,res_list=res_list_shrink,
-                                n_imp=5000,continuous_slct_index=c(1),
-                                cate_slct_index=NULL,future.seed = TRUE)
 
 ptm=proc.time()
 set.seed(125)
@@ -183,59 +160,10 @@ tranform_list<-function(simulation_object){
   return(list(unl=unl,eff_size=eff_size))
 }
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_D_UNLhist_shrink.png",
-    width = 609*5, height = 469*5,res = 72*5)
-cols <- c(
-  rgb(0, 0, 1, 0.2),
-  rgb(0, 1, 0, 0.2),
-  rgb(1, 0, 0, 0.2),
-  rgb(0.5, 0, 0.5, 0.2)
-)
-m1    <- tranform_list(UNL_imp_full_shrink)$unl
-m2    <- tranform_list(UNL_imp_pindex1_shrink)$unl
-m3    <- tranform_list(UNL_imp_pindex2_shrink)$unl
-m4    <- tranform_list(UNL_imp_p1_shrink)$unl
-
-df <- data.frame(
-  unl = c(m1, m2,m3,m4),
-  group = factor(rep(
-    c("all covariates",
-      "even-indexed covariates","odd-indexed covariates",expression(x[1])),
-    times = c(length(m1), length(m2),length(m3),length(m4))
-  ),levels =c("all covariates",
-              "even-indexed covariates","odd-indexed covariates",expression(x[1])))
-)
-
-mycols <- setNames(cols, c("all covariates",
-                           "even-indexed covariates","odd-indexed covariates",expression(x[1])))
-
-# 绘图（density：y = ..density..）
-ggplot(df, aes(x = unl, fill = group)) +
-  geom_histogram(aes(y = after_stat(density)),
-                 position = "identity",    # 叠加显示
-                 alpha = 0.45,             # 透明度，便于比较
-                 bins = 30,          # 可根据需要调整 binwidth 或用 bins = 30
-                 color = "black") +        # 柱子边框
-  coord_cartesian(xlim = c(1, 2)) +   # 保留原来你给的 xlim/ylim
-  scale_fill_manual(values = mycols,
-                    name = NULL) +
-  labs(x = "UNL", y = "Density") +
-  theme_minimal() +
-  theme(
-    plot.title.position = "plot",
-    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-    axis.title = element_text(size = 20),
-    axis.text = element_text(size = 15),
-    legend.position = c(0.26, 0.98),                  # 图内右上角（模拟 base::legend("topright")）
-    legend.justification = c(1, 1),
-    legend.background = element_blank(),
-    legend.key = element_blank()
-  )
-dev.off()
 
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_D_UNLhist.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
+
 cols <- c(
   rgb(0, 0, 1, 0.2),
   rgb(0, 1, 0, 0.2),
@@ -260,14 +188,13 @@ df <- data.frame(
 mycols <- setNames(cols, c("all covariates",
                            "even-indexed covariates","odd-indexed covariates","x_1"))
 
-# 绘图（density：y = ..density..）
 ggplot(df, aes(x = unl, fill = group)) +
   geom_histogram(aes(y = after_stat(density)),
-                 position = "identity",    # 叠加显示
-                 alpha = 0.45,             # 透明度，便于比较
-                 bins = 30,          # 可根据需要调整 binwidth 或用 bins = 30
-                 color = "black") +        # 柱子边框
-  coord_cartesian(xlim = c(1, 2)) +   # 保留原来你给的 xlim/ylim
+                 position = "identity",    
+                 alpha = 0.45,           
+                 bins = 30,         
+                 color = "black") +      
+  coord_cartesian(xlim = c(1, 2)) +   
   scale_fill_manual(values = mycols,
                     name = NULL) +
   labs(x = "UNL", y = "Density") +
@@ -277,13 +204,13 @@ ggplot(df, aes(x = unl, fill = group)) +
     plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
     axis.title = element_text(size = 20),
     axis.text = element_text(size = 15),
-    legend.position = c(0.38, 0.98),                  # 图内右上角（模拟 base::legend("topright")）
+    legend.position = c(0.38, 0.98),                 
     legend.justification = c(1, 1),
     legend.text = element_text(size = 16),
     legend.background = element_blank(),
     legend.key = element_blank()
   )
-dev.off()
+
 
 thresholds=quantile(x[,1],probs = c(0.25,0.5,0.75))
 X1=X[data$X1<thresholds[1],]
@@ -302,8 +229,7 @@ set.seed(167)
 y_post_lddp_bin4=predic_lddp(fit_lddp =fit_lddp,X=X4)
 proc.time()-ptm
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_D_postcheck_dens1.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 par(cex.axis = 1.5,
     cex.lab  = 1.8,
     cex.main = 1.8,
@@ -315,10 +241,8 @@ for(r in 2:mcmc$nsave){
 }
 lines(density(data$y[data$X1<thresholds[1]],n=2048)$x,
       density(data$y[data$X1<thresholds[1]],n=2048)$y,col="lightblue",lwd=4)
-dev.off()
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_D_postcheck_dens2.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 par(cex.axis = 1.5,
     cex.lab  = 1.8,
     cex.main = 1.8,
@@ -330,10 +254,8 @@ for(r in 2:mcmc$nsave){
 }
 lines(density(data$y[data$X1>=thresholds[1]&data$X1<thresholds[2]],n=2048)$x,
       density(data$y[data$X1>=thresholds[1]&data$X1<thresholds[2]],n=2048)$y,col="lightblue",lwd=4)
-dev.off()
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_D_postcheck_dens3.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 par(cex.axis = 1.5,
     cex.lab  = 1.8,
     cex.main = 1.8,
@@ -345,10 +267,8 @@ for(r in 2:mcmc$nsave){
 }
 lines(density(data$y[data$X1>=thresholds[2]&data$X1<thresholds[3]],n=2048)$x,
       density(data$y[data$X1>=thresholds[2]&data$X1<thresholds[3]],n=2048)$y,col="lightblue",lwd=4)
-dev.off()
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_D_postcheck_dens4.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 par(cex.axis = 1.5,
     cex.lab  = 1.8,
     cex.main = 1.8,
@@ -360,7 +280,6 @@ for(r in 2:mcmc$nsave){
 }
 lines(density(data$y[data$X1>=thresholds[3]],n=2048)$x,
       density(data$y[data$X1>=thresholds[3]],n=2048)$y,col="lightblue",lwd=4)
-dev.off()
 
 ##conditioned on x2 kernel density plots
 thresholds=quantile(x[,2],probs = c(0.25,0.5,0.75))
@@ -380,8 +299,7 @@ set.seed(167)
 y_post_lddp_bin4_x2=predic_lddp(fit_lddp =fit_lddp,X=X4)
 proc.time()-ptm
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_D_postcheck_dens1_x2.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 par(cex.axis = 1.5,
     cex.lab  = 1.8,
     cex.main = 1.8,
@@ -393,10 +311,8 @@ for(r in 2:mcmc$nsave){
 }
 lines(density(data$y[data$X2<thresholds[1]],n=2048)$x,
       density(data$y[data$X2<thresholds[1]],n=2048)$y,col="lightblue",lwd=4)
-dev.off()
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_D_postcheck_dens2_x2.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 par(cex.axis = 1.5,
     cex.lab  = 1.8,
     cex.main = 1.8,
@@ -408,10 +324,8 @@ for(r in 2:mcmc$nsave){
 }
 lines(density(data$y[data$X2>=thresholds[1]&data$X2<thresholds[2]],n=2048)$x,
       density(data$y[data$X2>=thresholds[1]&data$X2<thresholds[2]],n=2048)$y,col="lightblue",lwd=4)
-dev.off()
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_D_postcheck_dens3_x2.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 par(cex.axis = 1.5,
     cex.lab  = 1.8,
     cex.main = 1.8,
@@ -423,10 +337,8 @@ for(r in 2:mcmc$nsave){
 }
 lines(density(data$y[data$X2>=thresholds[2]&data$X2<thresholds[3]],n=2048)$x,
       density(data$y[data$X2>=thresholds[2]&data$X2<thresholds[3]],n=2048)$y,col="lightblue",lwd=4)
-dev.off()
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_D_postcheck_dens4_x2.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 par(cex.axis = 1.5,
     cex.lab  = 1.8,
     cex.main = 1.8,
@@ -438,7 +350,6 @@ for(r in 2:mcmc$nsave){
 }
 lines(density(data$y[data$X2>=thresholds[3]],n=2048)$x,
       density(data$y[data$X2>=thresholds[3]],n=2048)$y,col="lightblue",lwd=4)
-dev.off()
 
 
 ##conditioned on x3 kernel density plots
@@ -459,8 +370,7 @@ set.seed(167)
 y_post_lddp_bin4_x3=predic_lddp(fit_lddp =fit_lddp,X=X4)
 proc.time()-ptm
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_D_postcheck_dens1_x3.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 par(cex.axis = 1.5,
     cex.lab  = 1.8,
     cex.main = 1.8,
@@ -472,10 +382,8 @@ for(r in 2:mcmc$nsave){
 }
 lines(density(data$y[data$X3<thresholds[1]],n=2048)$x,
       density(data$y[data$X3<thresholds[1]],n=2048)$y,col="lightblue",lwd=4)
-dev.off()
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_D_postcheck_dens2_x3.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 par(cex.axis = 1.5,
     cex.lab  = 1.8,
     cex.main = 1.8,
@@ -487,10 +395,8 @@ for(r in 2:mcmc$nsave){
 }
 lines(density(data$y[data$X3>=thresholds[1]&data$X3<thresholds[2]],n=2048)$x,
       density(data$y[data$X3>=thresholds[1]&data$X3<thresholds[2]],n=2048)$y,col="lightblue",lwd=4)
-dev.off()
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_D_postcheck_dens3_x3.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 par(cex.axis = 1.5,
     cex.lab  = 1.8,
     cex.main = 1.8,
@@ -502,10 +408,8 @@ for(r in 2:mcmc$nsave){
 }
 lines(density(data$y[data$X3>=thresholds[2]&data$X3<thresholds[3]],n=2048)$x,
       density(data$y[data$X3>=thresholds[2]&data$X3<thresholds[3]],n=2048)$y,col="lightblue",lwd=4)
-dev.off()
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_D_postcheck_dens4_x3.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 par(cex.axis = 1.5,
     cex.lab  = 1.8,
     cex.main = 1.8,
@@ -517,7 +421,6 @@ for(r in 2:mcmc$nsave){
 }
 lines(density(data$y[data$X3>=thresholds[3]],n=2048)$x,
       density(data$y[data$X3>=thresholds[3]],n=2048)$y,col="lightblue",lwd=4)
-dev.off()
 
 ptm=proc.time()
 set.seed(167)
@@ -525,8 +428,7 @@ y_post_lddp=predic_lddp(fit_lddp =fit_lddp,X=X)
 proc.time()-ptm
 
 
-png(filename = "D:/PhD_study2_desktop/plots/example_plots/example_D_postcheck_kurtosis.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 data_kurtosis=data.frame(kurtosis=apply(y_post_lddp,FUN = moments::kurtosis,MARGIN = 1))
 original_kurtosis=moments::kurtosis(data$y)
 theme_set(theme_bw())
@@ -534,10 +436,8 @@ ggplot(data_kurtosis, aes(x=kurtosis)) +
   geom_histogram( fill="slategray4", color="slategray4")+
   geom_vline(xintercept = original_kurtosis, color="lightblue", linewidth=1.6)+
   xlab("Kurtosis of y")+ylab("Counts")+  theme(     plot.title = element_text(size = 20, face = "bold", hjust = 0.5),     axis.title = element_text(size = 24),     axis.text = element_text(size = 15)   )
-dev.off()
 
-png(filename = "D:/PhD_study2_desktop/plots/example_plots/example_D_postcheck_skewness.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 data_skewness=data.frame(skewness=apply(y_post_lddp,FUN = moments::skewness,MARGIN = 1))
 original_skewness=moments::skewness(data$y)
 theme_set(theme_bw())
@@ -545,10 +445,8 @@ ggplot(data_skewness, aes(x=skewness)) +
   geom_histogram(fill="slategray4", color="slategray4")+
   geom_vline(xintercept = original_skewness, color="lightblue", linewidth=1.6)+
   xlab("Skewness of y")+ylab("Counts")+  theme(     plot.title = element_text(size = 20, face = "bold", hjust = 0.5),     axis.title = element_text(size = 24),     axis.text = element_text(size = 15)   )
-dev.off()
 
-png(filename = "D:/PhD_study2_desktop/plots/example_plots/example_D_postcheck_min.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 data_min=data.frame(min=apply(y_post_lddp,FUN = min,MARGIN = 1))
 original_min=min(data$y)
 theme_set(theme_bw())
@@ -556,10 +454,8 @@ ggplot(data_min, aes(x=min)) +
   geom_histogram( fill="slategray4", color="slategray4")+
   geom_vline(xintercept = original_min, color="lightblue", linewidth=1.6)+
   xlab("Minmum value of y")+ylab("Counts")+  theme(     plot.title = element_text(size = 20, face = "bold", hjust = 0.5),     axis.title = element_text(size = 24),     axis.text = element_text(size = 15)   )
-dev.off()
 
-png(filename = "D:/PhD_study2_desktop/plots/example_plots/example_D_postcheck_max.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 data_max=data.frame(max=apply(y_post_lddp,FUN = max,MARGIN = 1))
 original_max=max(data$y)
 theme_set(theme_bw())
@@ -567,10 +463,8 @@ ggplot(data_max, aes(x=max)) +
   geom_histogram( fill="slategray4", color="slategray4")+
   geom_vline(xintercept = original_max, color="lightblue", linewidth=1.6)+
   xlab("Maximum value of y")+ylab("Counts")+  theme(     plot.title = element_text(size = 20, face = "bold", hjust = 0.5),     axis.title = element_text(size = 24),     axis.text = element_text(size = 15)   )
-dev.off()
 
-png(filename = "D:/PhD_study2_desktop/plots/example_plots/example_D_postcheck_sd.png",
-    width = 609*5, height = 469*5,res = 72*5)
+
 data_sd=data.frame(sd=apply(y_post_lddp,FUN = sd,MARGIN = 1))
 original_sd=sd(data$y)
 theme_set(theme_bw())
@@ -578,7 +472,6 @@ ggplot(data_sd, aes(x=sd)) +
   geom_histogram( fill="slategray4", color="slategray4")+
   geom_vline(xintercept = original_sd, color="lightblue", linewidth=1.6)+
   xlab("Standard deviation of y")+ylab("Counts")+  theme(     plot.title = element_text(size = 20, face = "bold", hjust = 0.5),     axis.title = element_text(size = 24),     axis.text = element_text(size = 15)   )
-dev.off()
 
 ##conditional density heatmap
 ygrid=seq(-3, 8,length=100)
@@ -642,8 +535,7 @@ heat_df3 <- expand.grid(y = ygrid, x = xgrid) %>%
 heat_dftrue <- expand.grid(y = ygrid, x = xgrid) %>%
   dplyr::mutate(density = as.vector(true_dense_grid))
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_D_heat_q1.png",
-    width = 500*5, height = 334*5,res = 72*5)
+
 theme_set(theme_bw())
 ggplot(heat_df1, aes(x, y, fill = density)) +
   coord_cartesian(xlim = c(-3, 11), ylim = c(-3, 8))+
@@ -657,10 +549,8 @@ ggplot(heat_df1, aes(x, y, fill = density)) +
     
     legend.key = element_blank(),panel.grid=element_blank()
   )
-dev.off()
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_D_heat_q2.png",
-    width = 500*5, height = 334*5,res = 72*5)
+
 theme_set(theme_bw())
 ggplot(heat_df2, aes(x, y, fill = density)) +
   coord_cartesian(xlim = c(-3, 11), ylim = c(-3, 8))+
@@ -674,10 +564,8 @@ ggplot(heat_df2, aes(x, y, fill = density)) +
     
     legend.key = element_blank(),panel.grid=element_blank()
   )
-dev.off()
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_D_heat_q3.png",
-    width = 500*5, height = 334*5,res = 72*5)
+
 theme_set(theme_bw())
 ggplot(heat_df3, aes(x, y, fill = density)) +
   coord_cartesian(xlim = c(-3, 11), ylim = c(-3, 8))+
@@ -691,10 +579,8 @@ ggplot(heat_df3, aes(x, y, fill = density)) +
     
     legend.key = element_blank(),panel.grid=element_blank()
   )
-dev.off()
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_D_heat_true.png",
-    width = 500*5, height = 334*5,res = 72*5)
+
 theme_set(theme_bw())
 ggplot(heat_dftrue, aes(x, y, fill = density)) +
   coord_cartesian(xlim = c(-3, 11), ylim = c(-3, 8))+
@@ -708,7 +594,6 @@ ggplot(heat_dftrue, aes(x, y, fill = density)) +
     
     legend.key = element_blank(),panel.grid=element_blank()
   )
-dev.off()
 
 
 

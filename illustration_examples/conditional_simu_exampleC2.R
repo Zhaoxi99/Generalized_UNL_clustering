@@ -2,8 +2,8 @@ library(ggplot2)
 require(mcclust.ext)
 library(UNL.est)
 
-source("D:/PhD_study2_desktop/lddp_functions.R")
-#example b
+source("functions/lddp_functions.R")
+#example c2
 set.seed(111)
 n=800
 x=runif(n,min=-3,max=3)
@@ -66,31 +66,24 @@ ptm=proc.time()
 y_post_lddp=predic_lddp(fit_lddp =fit_lddp,X=X)
 proc.time()-ptm
 
+
+
 ggplot() +
   geom_point(aes(x = x, y = y, color = as.factor(output_vi_lddp$cl))) +
-  coord_cartesian(xlim = c(-3, 3), ylim = c(-65, 150))+
-  theme_bw() +
-  labs( x = "x", y = "y", color = "") 
-
-png("D:/PhD_study2_desktop/plots/example_plots/example_C2_lddp_fit_cate1.png",
-    width = 500*5, height = 334*5,res = 72*5)
-ggplot() +
-  geom_point(aes(x = x[x_cate==1], y = y[x_cate==1], color = as.factor(output_vi_lddp$cl[x_cate==1]))) +
   scale_colour_manual(values = cols, drop = FALSE)+
   coord_cartesian(xlim = c(-3, 3), ylim = c(-65, 150))+
-  labs( x = "x", y = "y", color = "cluster")+
+  labs( x = expression(x^c), y = "y", color = "cluster")+
   theme_minimal() +
-  theme(
-    plot.title = element_text(size = 23, face = "bold", hjust = 0.5),
-    axis.title = element_text(size = 23),
-    axis.text = element_text(size = 18),
-    legend.text = element_text(size = 20),
-    legend.title = element_text(size = 20)
+  theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+        axis.title = element_text(size = 20),
+        axis.text = element_text(size = 18),
+        plot.title.position = "plot",           
+        plot.subtitle = element_text(hjust = 0.5),
+        text =  element_text(size = 20),
+        legend.text = element_text(size = 20)
   )
-dev.off()
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_C2_lddp_fit_cate2.png",
-    width = 500*5, height = 334*5,res = 72*5)
+
 ggplot() +
   geom_point(aes(x = x[x_cate==2], y = y[x_cate==2], color = as.factor(output_vi_lddp$cl[x_cate==2]))) +
   scale_colour_manual(values = cols, drop = FALSE)+
@@ -104,7 +97,6 @@ ggplot() +
     legend.text = element_text(size = 20),
     legend.title = element_text(size = 20)
   )
-dev.off()
 
 #summary(y_post_lddp)
 
@@ -119,7 +111,7 @@ x_c1 <- as.matrix(x[ind1]);x_cate_c1 <- as.matrix(x_cate[ind1]);samples1=list(y=
 x_c2 <- as.matrix(x[ind2]);x_cate_c2 <- as.matrix(x_cate[ind2]);samples2=list(y=x_c2,y_cate=x_cate_c2)
 
 
-##prior for group 1,2,3,4
+##prior for group 1,2
 L=10
 set.seed(124)
 prior1=prior_dpm(samples1, L=L, K=L%/%2, nstart = 5,categories = 2)
@@ -146,12 +138,15 @@ plan(multisession, workers = detectCores()-2)
 res_list=list(res_1,res_2)
 #UNL for joint density
 ptm=proc.time()
+set.seed(123)
 UNL_imp_lddp_full=future_lapply(X=nsave_list,FUN = imp_unl3,res_list=res_list,
                                 n_imp=5000,continuous_slct_index=c(1),
                                 cate_slct_index=c(1),future.seed = TRUE)
+set.seed(123)
 UNL_imp_lddp_conti=future_lapply(X=nsave_list,FUN = imp_unl3,res_list=res_list,
                                  n_imp=5000,continuous_slct_index=c(1),
                                  cate_slct_index=NULL,future.seed = TRUE)
+set.seed(123)
 UNL_imp_lddp_cate=future_lapply(X=nsave_list,FUN = imp_unl3,res_list=res_list,
                                 n_imp=5000,continuous_slct_index=NULL,
                                 cate_slct_index=c(1),future.seed = TRUE)
@@ -170,15 +165,8 @@ tranform_list<-function(simulation_object){
 }
 
 
-# png("D:/PhD_study2_desktop/plots/example_plots/example_D2_UNLhist.png",
-#     width = 500*5, height = 334*5,res = 72*5)
-# hist(tranform_list(UNL_imp_lddp_cate)$unl,breaks = c(1.96,2.04),xlim=c(1,4),col = rgb(0, 1, 0, 0.2),freq = FALSE,xlab = "UNL",main = "4 clusters (conditional)")
-# hist(tranform_list(UNL_imp_lddp_full)$unl,xlim=c(1,4),col = rgb(0, 0, 1, 0.2),add = TRUE,freq = FALSE)
-# hist(tranform_list(UNL_imp_lddp_conti)$unl,xlim=c(1,4),col = rgb(1, 0, 0, 0.2), add = TRUE,freq = FALSE)
-# dev.off()
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_C2_UNLhist.png",
-    width = 500*5, height = 334*5,res = 72*5)
+
 cols <- c(
   rgb(0, 0, 1, 0.2),
   rgb(0, 1, 0, 0.2),
@@ -188,45 +176,43 @@ full  <- tranform_list(UNL_imp_lddp_full)$unl
 m1 <- tranform_list(UNL_imp_lddp_cate)$unl
 m2 <- tranform_list(UNL_imp_lddp_conti)$unl
 
-# 合并为 tidy 格式
 df <- data.frame(
   unl = c(full, m1, m2),
   group = factor(rep(
-    c("x and x^d",
+    c("x^c and x^d",
       "x^d",
-      "x"),
+      "x^c"),
     times = c(length(full), length(m1), length(m2))
-  ),level=c("x and x^d",
+  ),level=c("x^c and x^d",
             "x^d",
-            "x"))
+            "x^c"))
 )
-mycols <- setNames(cols[1:3], c("x and x^d",
+mycols <- setNames(cols[1:3], c("x^c and x^d",
                                 "x^d",
-                                "x"))
-# 绘图
+                                "x^c"))
 ggplot(df, aes(x = unl, fill = group)) +
-  geom_histogram(aes(y = after_stat(density)),        # freq = FALSE -> density
-                 position = "identity",       # 叠加而非堆叠
-                 alpha = 0.45,                # 透明度，便于比较
+  geom_histogram(aes(y = after_stat(density)),        
+                 position = "identity",      
+                 alpha = 0.45,             
                  #binwidth =0.02,
-                 bins = 38,                   # 可调整或改为 binwidth = ...
-                 color = "black") +          # 柱子边框
+                 bins = 38,                  
+                 color = "black") +         
   scale_fill_manual(values = mycols,
                     name = NULL) +
-  coord_cartesian(xlim = c(1, 2), ylim = c(0, 18)) +   # 保留你原来的 x/y 范围
+  coord_cartesian(xlim = c(1, 2), ylim = c(0, 18)) +  
   labs(x = "UNL", y = "Density") +
   theme_minimal() +
   theme(
-    plot.title = element_text(size = 23, face = "bold", hjust = 0.5),
-    axis.title = element_text(size = 23),
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 20),
     axis.text = element_text(size = 18),
     legend.text = element_text(size = 20),
-    legend.position = c(0.98, 0.98),                  # 图内右上角（模拟 base::legend("topright")）
+    legend.position = c(0.98, 0.98),                 
     legend.justification = c(1, 1),
     legend.background = element_blank(),
     legend.key = element_blank()
   )
-dev.off()
+
 
 ygrid=seq(-65, 150,by=1)
 xgrid=seq(-3, 3,by=0.1)
@@ -267,13 +253,12 @@ heat_dftrue1 <- expand.grid(y = ygrid, x = xgrid) %>%
 heat_dftrue2 <- expand.grid(y = ygrid, x = xgrid) %>%
   dplyr::mutate(density = as.vector(true_dense_cate2))
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_C2_heat_cate1.png",
-    width = 500*5, height = 334*5,res = 72*5)
+
 theme_set(theme_bw())
 ggplot(heat_df1, aes(x, y, fill = density)) +
   coord_cartesian(xlim = c(-3, 3), ylim = c(-65, 150))+
   geom_raster(interpolate = TRUE) + scale_fill_gradient(low = "white", high = "blue")+
-  labs(x = "x", y = "y",title="LDDP") +
+  labs(x = expression(x^c), y = "y",title="LDDP") +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
@@ -282,16 +267,14 @@ ggplot(heat_df1, aes(x, y, fill = density)) +
     
     legend.key = element_blank(),panel.grid=element_blank()
   )
-dev.off()
 
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_C2_heat_cate2.png",
-    width = 500*5, height = 334*5,res = 72*5)
+
 theme_set(theme_bw())
 ggplot(heat_df2, aes(x, y, fill = density)) +
   coord_cartesian(xlim = c(-3, 3), ylim = c(-65, 150))+
   geom_raster(interpolate = TRUE) + scale_fill_gradient(low = "white", high = "blue")+
-  labs(x = "x", y = "y",title="LDDP") +
+  labs(x = expression(x^c), y = "y",title="LDDP") +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
@@ -300,16 +283,14 @@ ggplot(heat_df2, aes(x, y, fill = density)) +
     
     legend.key = element_blank(),panel.grid=element_blank()
   )
-dev.off()
 
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_C2_heat_true_cate1.png",
-    width = 500*5, height = 334*5,res = 72*5)
+
 theme_set(theme_bw())
 ggplot(heat_dftrue1, aes(x, y, fill = density)) +
   coord_cartesian(xlim = c(-3, 3), ylim = c(-65, 150))+
   geom_raster(interpolate = TRUE) + scale_fill_gradient(low = "white", high = "blue")+
-  labs(x = "x", y = "y",title="Truth") +
+  labs(x = expression(x^c), y = "y",title="Truth") +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
@@ -318,15 +299,13 @@ ggplot(heat_dftrue1, aes(x, y, fill = density)) +
     
     legend.key = element_blank(),panel.grid=element_blank()
   )
-dev.off()
 
-png("D:/PhD_study2_desktop/plots/example_plots/example_C2_heat_true_cate2.png",
-    width = 500*5, height = 334*5,res = 72*5)
+
 theme_set(theme_bw())
 ggplot(heat_dftrue2, aes(x, y, fill = density)) +
   coord_cartesian(xlim = c(-3, 3), ylim = c(-65, 150))+
   geom_raster(interpolate = TRUE) + scale_fill_gradient(low = "white", high = "blue")+
-  labs(x = "x", y = "y",title="Truth") +
+  labs(x = expression(x^c), y = "y",title="Truth") +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
@@ -335,4 +314,3 @@ ggplot(heat_dftrue2, aes(x, y, fill = density)) +
     
     legend.key = element_blank(),panel.grid=element_blank()
   )
-dev.off()
